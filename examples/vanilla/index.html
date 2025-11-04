@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Path Controller Vanilla Example</title>
+  </head>
+  <body>
+    <main class="container">
+      <h1>Path Controller Vanilla Example</h1>
+      <section class="controls">
+        <div class="field">
+          <label for="url">URL</label>
+          <input id="url" type="text" value="/example" />
+        </div>
+        <div class="field">
+          <label for="title">Title</label>
+          <input id="title" type="text" placeholder="Page title" />
+        </div>
+        <div class="field">
+          <label for="state">State (JSON)</label>
+          <textarea id="state" rows="3" placeholder='{ "page": 1 }'></textarea>
+        </div>
+        <div class="actions">
+          <button id="push">pushState</button>
+          <button id="replace">replaceState</button>
+          <button id="back">Back</button>
+          <button id="forward">Forward</button>
+        </div>
+      </section>
+      <section class="log">
+        <h2>Events</h2>
+        <ul id="events"></ul>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
