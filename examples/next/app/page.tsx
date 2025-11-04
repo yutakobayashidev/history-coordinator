@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { createHistoryCoordinator } from "@path-controller/core";
+import {
+  createHistoryCoordinator,
+  createHistoryRouter,
+} from "@path-controller/core";
 import { useState } from "react";
 
 type ViewState = { type: "list" } | { type: "detail"; id: string };
@@ -12,13 +15,20 @@ export default function RecordList() {
   const [overlayId, setOverlayId] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = history.subscribe(({ entry }) => {
-      if (entry.state?.type === "detail") {
-        setOverlayId(entry.state.id);
-      } else {
-        setOverlayId(null);
-      }
-    });
+    const unsubscribe = createHistoryRouter(history, [
+      {
+        test: (entry) => entry.state?.type === "detail",
+        listener: ({ entry }) => {
+          const id = entry.state?.type === "detail" ? entry.state.id : null;
+          setOverlayId(id);
+        },
+      },
+      {
+        test: (entry) => entry.state?.type !== "detail",
+        listener: () => setOverlayId(null),
+      },
+    ]);
+
     return unsubscribe;
   }, []);
 
