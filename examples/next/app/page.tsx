@@ -21,15 +21,19 @@ type Post = {
   body: string;
 };
 
+type SelectedPost = {
+  id: number;
+  title?: string;
+  body?: string;
+};
+
 type ViewState = { type: "detail"; id: number };
 
 const history = createHistoryCoordinator<ViewState>();
 
 export default function RecordList() {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [overlayId, setOverlayId] = useState<number | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [selectedPost, setSelectedPost] = useState<SelectedPost | null>(null);
 
   useEffect(() => {
     fetch("https://jsonplaceholder.typicode.com/posts?_limit=10")
@@ -43,8 +47,7 @@ export default function RecordList() {
         test: (entry) => entry.state?.type === "detail",
         listener: async ({ entry }) => {
           if (entry.state?.type === "detail" && entry.state?.id) {
-            setOverlayId(entry.state.id);
-            setSheetOpen(true);
+            setSelectedPost({ id: entry.state.id });
             const res = await fetch(
               `https://jsonplaceholder.typicode.com/posts/${entry.state.id}`
             );
@@ -56,8 +59,6 @@ export default function RecordList() {
       {
         test: (entry) => entry.state?.type !== "detail",
         listener: () => {
-          setOverlayId(null);
-          setSheetOpen(false);
           setSelectedPost(null);
         },
       },
@@ -67,7 +68,6 @@ export default function RecordList() {
 
   // Sheet を閉じたときに履歴を戻す
   const handleSheetOpenChange = useCallback((open: boolean) => {
-    setSheetOpen(open);
     if (!open) {
       history.back();
     }
@@ -99,13 +99,13 @@ export default function RecordList() {
 
       <Sheet
         modal={false}
-        open={sheetOpen}
+        open={Boolean(selectedPost)}
         onOpenChange={handleSheetOpenChange}
       >
         <SheetContent side="right" className="w-[400px]">
           <SheetHeader>
             <SheetTitle>{selectedPost?.title ?? "Loading..."}</SheetTitle>
-            <SheetDescription>ID: {overlayId}</SheetDescription>
+            <SheetDescription>ID: {selectedPost?.id}</SheetDescription>
           </SheetHeader>
           <div className="p-4 text-sm whitespace-pre-line">
             {selectedPost?.body ?? "Loading post..."}
