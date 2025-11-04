@@ -84,6 +84,7 @@ export function createHistoryCoordinator<State = unknown>(
     push,
     replace,
     go: (delta) => win.history.go(delta),
+    back: () => win.history.back(),
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);

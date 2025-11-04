@@ -20,6 +20,7 @@ export interface HistoryCoordinator<State = unknown> {
   push: (entry: HistoryEntry<State>) => void;
   replace: (entry: HistoryEntry<State>) => void;
   go: (delta: number) => void;
+  back: () => void;
   subscribe: (listener: HistoryListener<State>) => () => void;
   destroy: () => void;
 }
