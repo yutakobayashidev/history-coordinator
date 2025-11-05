@@ -6,4 +6,5 @@ export {
   HistoryProvider,
   useHistory,
   useHistorySubscription,
+  usePathParams,
 } from "./react";

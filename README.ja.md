@@ -169,6 +169,7 @@ createHistoryRouter(history, [
 - `HistoryProvider` – コーディネータをコンテキストで共有し、アンマウント時に `destroy()`。
 - `useHistory()` – コンテキストからコーディネータを取得（プロバイダ外では例外）。
 - `useHistorySubscription(listener, deps?)` – 履歴イベントを購読し、自動でクリーンアップ。
+- `usePathParams(pattern)` – `window.location.pathname` を Next.js 風パターン（例: `/posts/[id]`）で解析。
 
 ## 開発
 

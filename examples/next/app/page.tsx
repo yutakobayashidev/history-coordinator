@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  createHistoryCoordinator,
-  createHistoryRouter,
+  HistoryEntry,
+  useHistory,
+  usePathParams,
 } from "@path-controller/core";
 import {
   Sheet,
@@ -21,94 +23,125 @@ type Post = {
   body: string;
 };
 
-type SelectedPost = {
-  id: number;
-  title?: string;
-  body?: string;
-};
-
 type ViewState = { type: "detail"; id: number };
 
-const history = createHistoryCoordinator<ViewState>();
+const POSTS_ENDPOINT = "https://jsonplaceholder.typicode.com/posts";
+
+const fetchPosts = async (): Promise<Post[]> => {
+  const res = await fetch(`${POSTS_ENDPOINT}?_limit=10`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to load posts");
+  return res.json();
+};
+
+const fetchPostDetail = async (id: number): Promise<Post> => {
+  const res = await fetch(`${POSTS_ENDPOINT}/${id}`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to load post detail");
+  return res.json();
+};
 
 export default function RecordList() {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [selectedPost, setSelectedPost] = useState<SelectedPost | null>(null);
+  const history = useHistory<ViewState>();
+  const queryClient = useQueryClient();
+  const params = usePathParams("/posts/[id]");
 
-  useEffect(() => {
-    fetch("https://jsonplaceholder.typicode.com/posts?_limit=10")
-      .then((res) => res.json())
-      .then(setPosts);
-  }, []);
+  const selectedId = useMemo(() => {
+    const id = params?.id;
+    if (!id) return null;
+    const parsed = Number(id);
+    return Number.isNaN(parsed) ? null : parsed;
+  }, [params]);
 
-  useEffect(() => {
-    const unsubscribe = createHistoryRouter(history, [
-      {
-        test: (entry) => entry.state?.type === "detail",
-        listener: async ({ entry }) => {
-          if (entry.state?.type === "detail" && entry.state?.id) {
-            setSelectedPost({ id: entry.state.id });
-            const res = await fetch(
-              `https://jsonplaceholder.typicode.com/posts/${entry.state.id}`
-            );
-            const data = await res.json();
-            setSelectedPost(data);
-          }
-        },
-      },
-      {
-        test: (entry) => entry.state?.type !== "detail",
-        listener: () => {
-          setSelectedPost(null);
-        },
-      },
-    ]);
-    return unsubscribe;
-  }, []);
+  const postsQuery = useQuery({
+    queryKey: ["posts"],
+    queryFn: fetchPosts,
+  });
 
-  // Sheet を閉じたときに履歴を戻す
-  const handleSheetOpenChange = useCallback((open: boolean) => {
-    if (!open) {
-      history.back();
-    }
-  }, []);
+  const detailQuery = useQuery({
+    queryKey: ["post", selectedId],
+    queryFn: () => fetchPostDetail(selectedId!),
+    enabled: selectedId != null,
+    staleTime: 1000 * 30,
+  });
+
+  const handleSelect = useCallback(
+    (entry: HistoryEntry<ViewState>) => {
+      history.push(entry);
+    },
+    [history]
+  );
+
+  const handleHover = useCallback(
+    (id: number) => {
+      queryClient.prefetchQuery({
+        queryKey: ["post", id],
+        queryFn: () => fetchPostDetail(id),
+        staleTime: 1000 * 30,
+      });
+    },
+    [queryClient]
+  );
+
+  const handleSheetOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        history.back();
+      }
+    },
+    [history]
+  );
+
+  const posts = postsQuery.data ?? [];
+  const selectedPost = detailQuery.data;
 
   return (
     <div className="p-4 space-y-4">
       <h2 className="text-lg font-bold mb-2">Posts</h2>
-      <ul className="space-y-2">
-        {posts.map((post) => (
-          <li key={post.id}>
-            <button
-              className="block w-full text-left p-3 border rounded hover:bg-muted"
-              onClick={() =>
-                history.push({
-                  url: `/posts/${post.id}`,
-                  state: { type: "detail", id: post.id },
-                })
-              }
-            >
-              <div className="font-semibold">{post.title}</div>
-              <div className="text-sm text-muted-foreground truncate">
-                {post.body}
-              </div>
-            </button>
-          </li>
-        ))}
-      </ul>
+      {postsQuery.isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading posts…</p>
+      ) : (
+        <ul className="space-y-2">
+          {posts.map((post) => (
+            <li key={post.id}>
+              <button
+                className="block w-full text-left p-3 border rounded hover:bg-muted"
+                onClick={() =>
+                  handleSelect({
+                    url: `/posts/${post.id}`,
+                    state: { type: "detail", id: post.id },
+                  })
+                }
+                onMouseEnter={() => handleHover(post.id)}
+              >
+                <div className="font-semibold">{post.title}</div>
+                <div className="text-sm text-muted-foreground truncate">
+                  {post.body}
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <Sheet
         modal={false}
-        open={Boolean(selectedPost)}
+        open={selectedId != null}
         onOpenChange={handleSheetOpenChange}
       >
         <SheetContent side="right" className="w-[400px]">
           <SheetHeader>
-            <SheetTitle>{selectedPost?.title ?? "Loading..."}</SheetTitle>
-            <SheetDescription>ID: {selectedPost?.id}</SheetDescription>
+            <SheetTitle>
+              {detailQuery.isPending
+                ? "Loading…"
+                : selectedPost?.title ?? "Post not found"}
+            </SheetTitle>
+            <SheetDescription>
+              {selectedId != null ? `ID: ${selectedId}` : ""}
+            </SheetDescription>
           </SheetHeader>
           <div className="p-4 text-sm whitespace-pre-line">
-            {selectedPost?.body ?? "Loading post..."}
+            {detailQuery.isPending
+              ? "Loading post…"
+              : selectedPost?.body ?? "No content available."}
           </div>
           <SheetFooter>
             <SheetClose asChild>

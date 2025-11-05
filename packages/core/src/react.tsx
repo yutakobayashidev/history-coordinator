@@ -1,15 +1,18 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
+  useState,
   ReactNode,
   DependencyList,
   FC,
 } from "react";
 
 import { createHistoryCoordinator } from "./controller";
-import { HistoryCoordinator, HistoryListener } from "./types";
+import { matchPathParams } from "./path-params";
+import { HistoryCoordinator, HistoryListener, PathParams } from "./types";
 
 export const HistoryContext = createContext<HistoryCoordinator<any> | null>(
   null
@@ -46,4 +49,30 @@ export function useHistorySubscription<State = unknown>(
 ) {
   const history = useHistory<State>();
   useEffect(() => history.subscribe(listener), [history, ...deps]);
+}
+
+const getCurrentPathname = () =>
+  typeof window === "undefined" ? null : window.location.pathname;
+
+export function usePathParams<Pattern extends string>(
+  pattern: Pattern
+): PathParams<Pattern> | null {
+  const compute = useCallback(() => {
+    const pathname = getCurrentPathname();
+    if (pathname == null) return null;
+    const match = matchPathParams(pattern, pathname);
+    return (match ?? null) as PathParams<Pattern> | null;
+  }, [pattern]);
+
+  const [params, setParams] = useState<PathParams<Pattern> | null>(compute);
+
+  useEffect(() => {
+    setParams(compute());
+  }, [compute]);
+
+  useHistorySubscription(() => {
+    setParams(compute());
+  }, [compute]);
+
+  return params;
 }

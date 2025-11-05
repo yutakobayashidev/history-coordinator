@@ -31,3 +31,35 @@ export interface HistoryCoordinatorOptions {
   serializeState?: (state: unknown) => unknown;
   deserializeState?: (raw: unknown) => unknown;
 }
+
+type AppendSegment<Segment extends string, Acc extends string[]> = Segment extends ""
+  ? Acc
+  : [...Acc, Segment];
+
+type SplitPath<Pattern extends string, Acc extends string[] = []> =
+  Pattern extends ""
+    ? Acc
+    : Pattern extends `/${infer Rest}`
+    ? SplitPath<Rest, Acc>
+    : Pattern extends `${infer Segment}/${infer Rest}`
+    ? SplitPath<Rest, AppendSegment<Segment, Acc>>
+    : AppendSegment<Pattern, Acc>;
+
+type SegmentParam<Segment extends string> = Segment extends `[[...${infer Param}]]`
+  ? { [K in Param]?: string[] }
+  : Segment extends `[...${infer Param}]`
+  ? { [K in Param]: string[] }
+  : Segment extends `[${infer Param}]`
+  ? { [K in Param]: string }
+  : {};
+
+type PathParamsFromSegments<Segments extends string[]> = Segments extends [
+  infer Head extends string,
+  ...infer Tail extends string[]
+]
+  ? SegmentParam<Head> & PathParamsFromSegments<Tail>
+  : {};
+
+export type PathParams<Pattern extends string> = string extends Pattern
+  ? Record<string, string | string[] | undefined>
+  : PathParamsFromSegments<SplitPath<Pattern>>;

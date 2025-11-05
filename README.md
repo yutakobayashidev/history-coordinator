@@ -171,6 +171,7 @@ Subscribes to the coordinator and dispatches events whose `test` predicate retur
 - `HistoryProvider` – Provides a coordinator via context. Destroys it on unmount.
 - `useHistory()` – Retrieves the coordinator from context. Throws if called outside the provider.
 - `useHistorySubscription(listener, deps?)` – Subscribes to history events with automatic cleanup.
+- `usePathParams(pattern)` – Parses `window.location.pathname` using a Next.js-style pattern like `/posts/[id]`.
 
 ## Development
 
