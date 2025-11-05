@@ -2,11 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  HistoryEntry,
-  useHistory,
-  usePathParams,
-} from "@path-controller/core";
+import { HistoryEntry, useHistory, usePathParams } from "@path-controller/core";
 import {
   Sheet,
   SheetClose,
@@ -86,6 +82,7 @@ export default function RecordList() {
       if (!open) {
         history.back();
       }
+      // open === true のときは何もしない（選択時 push が既に走っているため）
     },
     [history]
   );
@@ -127,7 +124,15 @@ export default function RecordList() {
         open={selectedId != null}
         onOpenChange={handleSheetOpenChange}
       >
-        <SheetContent side="right" className="w-[400px]">
+        <SheetContent
+          onInteractOutside={(e) => {
+            // 投稿リストクリックで閉じるのを防ぐ
+            e.preventDefault();
+          }}
+          key={selectedId}
+          side="right"
+          className="w-[400px]"
+        >
           <SheetHeader>
             <SheetTitle>
               {detailQuery.isPending
